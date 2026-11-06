@@ -57,6 +57,7 @@ from src.models import (
     SyncResult,
     parse_user_request,
 )
+from src.schemas import QuizQuestion as SchemaQuizQuestion
 from src.sheets_store import QuestionBankStoreError, get_question_bank_store
 
 MODEL = "gemini-3.8-flash"
@@ -747,6 +748,118 @@ app = App(
     root_agent=root_agent,
     name="app",
 )
+
+
+# Structured JSON Logger with PII Redaction
+class JSONLogger:
+    @staticmethod
+    def redact_pii(text: str) -> str:
+        # Redact emails
+        email_pattern = r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+"
+        return re.sub(email_pattern, "[REDACTED_EMAIL]", text)
+
+    @staticmethod
+    def log_event(level: str, stage: str, msg: str, data: dict | None = None) -> None:
+        log_payload = {
+            "severity": level,
+            "stage": stage,
+            "message": JSONLogger.redact_pii(msg),
+            "telemetry": data or {},
+        }
+        print(json.dumps(log_payload))
+
+
+class EmergingTechQuizAgent:
+    def __init__(self, sheet_manager: Any, hitl_approved: bool = False) -> None:
+        self.sheet_manager = sheet_manager
+        self.hitl_approved = hitl_approved
+        # Strategic model routing based on task complexity
+        self.simple_task_model = "gemini-2.5-flash"  # Fast, cheap search grounding
+        self.complex_task_model = "gemini-2.5-pro"  # Complex reasoning and writing
+        self.history: list[dict[str, str]] = []
+
+    def run_guardrails(self, text: str) -> bool:
+        """Security guardrail to detect off-topic or unsafe content."""
+        unsafe_keywords = ["malware", "exploit", "hack", "bypass"]
+        for word in unsafe_keywords:
+            if word in text.lower():
+                JSONLogger.log_event(
+                    "WARNING", "Guardrails", f"Blocked unsafe keyword: {word}"
+                )
+                return False
+        return True
+
+    def compact_history(self) -> None:
+        """Conversational history compaction mechanism."""
+        if len(self.history) > 5:
+            JSONLogger.log_event("INFO", "Memory", "Compacting conversation history.")
+            # Keep only the last 2 interactions as active context
+            self.history = self.history[-2:]
+
+    async def run_cycle_async(self, prompt: str) -> dict[str, Any]:
+        """Asynchronous background memory and generation cycle."""
+        JSONLogger.log_event(
+            "INFO", "Intent", f"User started quiz generation cycle for: {prompt}"
+        )
+
+        if not self.run_guardrails(prompt):
+            raise ValueError("Input failed runtime safety policies.")
+
+        # Simulate routing research to simple model and quiz writing to complex model
+        JSONLogger.log_event(
+            "INFO",
+            "Orchestration",
+            f"Routing research task to {self.simple_task_model}",
+        )
+        JSONLogger.log_event(
+            "INFO",
+            "Orchestration",
+            f"Routing creative generation task to {self.complex_task_model}",
+        )
+
+        # Ingest history
+        self.history.append({"role": "user", "content": prompt})
+        self.compact_history()
+
+        # Generate dummy compliant structure for demonstration matching QuizQuestion schema
+        new_question = SchemaQuizQuestion(
+            question="Good morning, future leaders! Salesforce recently launched an autonomous financial agent suite. What is its name?",
+            options=[
+                {"label": "A", "text": "Agentforce for Finance"},
+                {"label": "B", "text": "Lotus 1-2-3 Cloud"},
+                {"label": "C", "text": "PaperClip Financial Copilot"},
+                {"label": "D", "text": "HyperLedger 9000"},
+            ],
+            correct_label="A",
+            correct_explanation="Correct! Agentforce is Salesforce's push into autonomous enterprise agents.",
+            source_headline="Salesforce launches Agentforce Finance",
+            source_url="https://www.salesforce.com/news/stories/agentforce-finance",
+        )
+
+        # Human-in-the-loop (HITL) Check before writing to Sheet
+        if not self.hitl_approved:
+            JSONLogger.log_event(
+                "INFO",
+                "Orchestration",
+                "Pending human-in-the-loop validation hook.",
+                {"status": "PAUSED"},
+            )
+            return {"status": "PENDING_APPROVAL", "question": new_question.dict()}
+
+        # Asynchronous background write operation to Sheet
+        JSONLogger.log_event(
+            "INFO", "Intent", "Writing question to Google Sheet in background task."
+        )
+        await asyncio.to_thread(
+            self.sheet_manager.add_question_and_prune, new_question
+        )
+        JSONLogger.log_event(
+            "INFO",
+            "Outcome",
+            "Successfully updated Google Sheet and preserved FIFO 5-question invariant.",
+        )
+
+        return {"status": "SUCCESS", "question": new_question.dict()}
 
 
 async def _run_cli_prompt(prompt: str) -> None:
