@@ -1,0 +1,7 @@
+google-genai
+gspread
+google-oauth2
+pydantic
+pytest
+fastapi
+uvicorn

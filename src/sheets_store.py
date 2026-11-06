@@ -32,7 +32,7 @@ import google.auth.exceptions
 import gspread
 from google.auth.transport.requests import Request
 
-from app.models import (
+from src.models import (
     MAX_QUESTIONS,
     SHEET_HEADERS,
     QuestionBankRow,

@@ -49,7 +49,7 @@ from google.adk.tools import google_search
 from google.adk.workflow import Workflow, node
 from google.genai import types
 
-from app.models import (
+from src.models import (
     MAX_QUESTIONS,
     QuestionBankRow,
     QuizBatch,
@@ -57,7 +57,7 @@ from app.models import (
     SyncResult,
     parse_user_request,
 )
-from app.sheets_store import QuestionBankStoreError, get_question_bank_store
+from src.sheets_store import QuestionBankStoreError, get_question_bank_store
 
 MODEL = "gemini-3.8-flash"
 

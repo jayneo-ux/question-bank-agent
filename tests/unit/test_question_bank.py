@@ -25,15 +25,15 @@ from google.adk.apps import App
 from google.adk.workflow import Workflow
 from pydantic import ValidationError
 
-from app.agent import app, root_agent, sanitize_question_sources
-from app.models import (
+from src.agent import app, root_agent, sanitize_question_sources
+from src.models import (
     MAX_QUESTIONS,
     SHEET_HEADERS,
     QuizBatch,
     QuizQuestion,
     parse_user_request,
 )
-from app.sheets_store import (
+from src.sheets_store import (
     GoogleSheetsQuestionBankStore,
     JsonFileQuestionBankStore,
     find_oldest_index,
