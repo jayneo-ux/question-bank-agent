@@ -1,0 +1,20 @@
+# Environments
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Secrets & Local Configs (CRITICAL)
+*.json
+!credentials.template.json
+.env
+.env.local
+
+# System & IDE
+.DS_Store
+.vscode/
+.idea/

@@ -1,0 +1,30 @@
+metrics_to_run:
+  - final_response_quality
+  - safety_v1
+  - custom_response_quality
+  - question_bank_rubric
+
+custom_metrics:
+  # Parameterize managed built-in metrics to use gemini-3.8-flash autorater.
+  - name: final_response_quality
+    judge_model: projects/jayneosandbox-sandbox-581199/locations/global/publishers/google/models/gemini-3.8-flash
+    judge_model_step_configs:
+      intent_extraction:
+        autorater_model: projects/jayneosandbox-sandbox-581199/locations/global/publishers/google/models/gemini-3.8-flash
+      rubric_generation:
+        autorater_model: projects/jayneosandbox-sandbox-581199/locations/global/publishers/google/models/gemini-3.8-flash
+      rubric_validation:
+        autorater_model: projects/jayneosandbox-sandbox-581199/locations/global/publishers/google/models/gemini-3.8-flash
+  - name: safety_v1
+    judge_model: projects/jayneosandbox-sandbox-581199/locations/global/publishers/google/models/gemini-3.8-flash
+  # Default: local LLM-as-judge (see response_quality.py). Runs in-process via
+  # google-genai on Gemini platform (ADC) or Google AI Studio (GEMINI_API_KEY).
+  - name: custom_response_quality
+    custom_function_file: response_quality.py
+  - name: question_bank_rubric
+    custom_function_file: question_bank_rubric.py
+  - name: agent_turn_count
+    custom_function: |
+      def evaluate(instance):
+          turns = (instance.get("agent_data") or {}).get("turns", [])
+          return {'score': len(turns)}
